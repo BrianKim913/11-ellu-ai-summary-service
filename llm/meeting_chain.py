@@ -74,7 +74,8 @@ def summarize_and_generate_tasks(meeting_note: str, nickname: str, project_id: i
     summary = generate_response([system_prompt, user_prompt])
 
     task_candidates = summary.split(',')
-
+    
+    
     parsed_results = []
     for task in task_candidates:
         wiki_context = retrieve_wiki_context(task, project_id)
