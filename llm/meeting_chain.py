@@ -19,6 +19,32 @@ model = AutoModelForCausalLM.from_pretrained("naver-hyperclovax/HyperCLOVAX-SEED
 tokenizer = AutoTokenizer.from_pretrained("naver-hyperclovax/HyperCLOVAX-SEED-Text-Instruct-1.5B")
 
 
+def extract_row_for_nickname(note: str, nickname: str) -> str:
+    lines = note.strip().split("\n")     # 줄 단위로 쪼개기
+    content_lines = [line for line in lines if "|" in line]     # 헤더 포함된 줄들만 유지 (| 포함)
+    filtered_lines = [line for line in content_lines if nickname in line]     # nickname이 포함된 줄만 필터링
+    header_lines = content_lines[:2]  # 헤더 2줄 (제목 줄, 구분선 줄)     # 표 헤더 및 필터된 줄만 반환
+    return "\n".join(header_lines + filtered_lines)
+
+
+def extract_priority_cell(raw_note: str, nickname: str) -> str:
+    """
+    필터된 회의록 행에서 '오늘 할 일 및 우선순위' 열의 셀 내용만 추출해 반환합니다.
+    """
+    filtered = extract_row_for_nickname(raw_note, nickname)
+    lines = filtered.split("\n")
+    if len(lines) < 3:
+        return ""
+    header_cells = [c.strip() for c in lines[0].split("|")]
+    data_cells = [c.strip() for c in lines[2].split("|")]
+    try:
+        idx = header_cells.index("오늘 할 일 및 우선순위")
+    except ValueError:
+        idx = 2  # 기본으로 3번째 칼럼
+    return data_cells[idx] if idx < len(data_cells) else ""
+
+
+
 def generate_response(chat: list) -> str:
     inputs = tokenizer.apply_chat_template(
         chat,
