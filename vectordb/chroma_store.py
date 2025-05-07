@@ -1,7 +1,13 @@
 import chromadb
 from embed_model import CustomEmbeddingFunction
 
-chroma_client = chromadb.HttpClient(host='localhost', port=8000)
+from config import CHROMA_HOST, CHROMA_PORT
+import chromadb
+
+chroma_client = chromadb.HttpClient(host=CHROMA_HOST, port=CHROMA_PORT)
+
+# chroma_client = chromadb.HttpClient(host='localhost', port=8000)
+
 COLLECTION_NAME = "wiki_summaries"
 collection = chroma_client.get_or_create_collection(name=COLLECTION_NAME)
 

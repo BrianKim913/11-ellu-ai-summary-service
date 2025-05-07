@@ -5,12 +5,15 @@ import chromadb
 # from llm.meeting_chain import summarize_and_generate_tasks
 # from llm.wiki_chain import wiki_chain
 # from vectordb.chroma_db import add_document_to_chroma
+from config import CHROMA_HOST, CHROMA_PORT
+import chromadb
+
+
 
 app = FastAPI()
 
-# chromadb 연결결
 try:
-    chroma_client = chromadb.HttpClient(host="localhost", port=8000)
+    chroma_client = chromadb.HttpClient(host=CHROMA_HOST, port=CHROMA_PORT)
     print(chroma_client.heartbeat())
     
 except Exception as e:
