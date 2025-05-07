@@ -108,9 +108,7 @@ def summarize_and_generate_tasks(meeting_note: str, nickname: str, project_id: i
             """
             }
         ]
-
         response = generate_response(task_chat)
-
 
         try:
             parsed = json.loads(clean_json_codeblock(response))
