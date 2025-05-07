@@ -74,3 +74,39 @@ def summarize_and_generate_tasks(meeting_note: str, nickname: str, project_id: i
     summary = generate_response([system_prompt, user_prompt])
 
     task_candidates = summary.split(',')
+    
+    
+    parsed_results = []
+    for task in task_candidates:
+        wiki_context = retrieve_wiki_context(task, project_id)
+        web_context = retrieve_web_context(task)
+
+        task_chat = [
+        {
+        "role": "system",
+        "content": f"""
+            {wiki_context}를 바탕으로 {nickname} 사용자의 {task}를 의미 있는 작업 단위로 나눠줘.
+            각 작업은 반드시 2개 이상의 세부 작업(subtasks)을 포함해야 해. 
+
+            - subtasks는 절대 빈 배열([])이면 안 돼.  
+            - 출력은 **반드시** 아래 JSON 형식으로만, 다른 설명은 포함하지 마:
+            - task 항목은 가능하면 "{task}"를 그대로 사용해줘. 
+            - 출력은 절대 설명 없이, 아래와 같이 콤마로 구분된 한 줄 요약으로만 해줘.
+            - 세부 작업들은 간단 명료하게 써줘.
+
+            Wiki Context: {wiki_context}
+
+            출력 예시:
+            {{
+            "task": "{task}",
+            "subtasks": [
+                "세부 작업 1",
+                "세부 작업 2",
+                "세부 작업 3"
+            ]
+            }}
+            """
+            }
+        ]
+
+        response = generate_response(task_chat)
