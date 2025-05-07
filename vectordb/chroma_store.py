@@ -1,5 +1,5 @@
 import chromadb
-from embed_model import CustomEmbeddingFunction
+from .embed_model import CustomEmbeddingFunction
 
 from config import CHROMA_HOST, CHROMA_PORT
 import chromadb
