@@ -108,5 +108,19 @@ def summarize_and_generate_tasks(meeting_note: str, nickname: str, project_id: i
             """
             }
         ]
-
         response = generate_response(task_chat)
+
+        try:
+            parsed = json.loads(clean_json_codeblock(response))
+            parsed_results.append({
+                "keyword": parsed["task"], 
+                "subtasks": parsed["subtasks"]
+            })
+        except Exception as e:
+            logger.error(f"파싱 실패: {e}\n{response}")
+            parsed_results.append({
+                "keyword": task,
+                "subtasks": []
+            })
+
+    return parsed_results
