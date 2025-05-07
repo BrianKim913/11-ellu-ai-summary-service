@@ -18,6 +18,7 @@ except Exception as e:
     logging.error(f"ChromaDB 연결 실패: {e}")
 
 
+
 class WikiInput(BaseModel):
     project_id: int
     wiki: str
@@ -27,7 +28,17 @@ class MeetingInput(BaseModel):
     meeting_note: str
     position: str
     nickname: str
-
+    
+@app.get("/")
+def read_root():
+    if chroma_client:
+        try:
+            status = chroma_client.heartbeat()
+            return {"status": "ok", "chroma": status}
+        except Exception as e:
+            return {"status": "partial", "error": str(e)}
+    else:
+        return {"status": "fail", "message": "ChromaDB not connected"}
 
 # @app.post("/ai/projects/wiki")
 # def summarize_wiki(input: WikiInput):
