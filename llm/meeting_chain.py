@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from llm.wiki_retriever import retrieve_wiki_context
 # from llm.tavily_search import retrieve_web_context
+import torch
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -18,10 +19,13 @@ class MeetingTaskParser:
 
         model_name = "naver-hyperclovax/HyperCLOVAX-SEED-Text-Instruct-1.5B"
 
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
             token=token  # ✅ 로그인 없이 토큰 전달
-        )
+        ).to(self.device) # 44issue
+
         self.tokenizer = AutoTokenizer.from_pretrained(
             model_name,
             token=token  # ✅ 동일하게 토큰 전달

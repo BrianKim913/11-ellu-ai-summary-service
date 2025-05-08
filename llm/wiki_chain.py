@@ -27,7 +27,8 @@ class WikiSummarizer:
             model=self.model,
             tokenizer=self.tokenizer,
             max_length=1024,
-            temperature=0
+            temperature=0,
+            device=0 if self.device == "cuda" else -1
         )
         self.llm = HuggingFacePipeline(pipeline=self.pipeline)
         self.prompt = PromptTemplate.from_template("요약해줘: {text}")
