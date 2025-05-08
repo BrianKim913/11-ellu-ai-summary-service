@@ -1,23 +1,23 @@
 import torch
 from transformers import AutoTokenizer, AutoModel
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-
-tokenizer = AutoTokenizer.from_pretrained("BM-K/KoSimCSE-roberta-multitask")
-model = AutoModel.from_pretrained("BM-K/KoSimCSE-roberta-multitask").to(device)
-model.eval()
-
 class CustomEmbeddingFunction:
+    def __init__(self, model_name="BM-K/KoSimCSE-roberta-multitask"):
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.model = AutoModel.from_pretrained(model_name).to(self.device)
+        self.model.eval()
+
     def __call__(self, texts: list[str]) -> list[list[float]]:
-        batch = tokenizer(
+        batch = self.tokenizer(
             texts,
             padding=True,
             truncation=True,
             return_tensors="pt"
-        ).to(device)
+        ).to(self.device)
 
         with torch.no_grad():
-            outputs = model(**batch, return_dict=False)
+            outputs = self.model(**batch, return_dict=False)
             embeddings = outputs[0][:, 0, :]  # CLS 토큰
             embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
 

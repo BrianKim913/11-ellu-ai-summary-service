@@ -2,14 +2,18 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import logging
 import chromadb
-from llm.meeting_chain import summarize_and_generate_tasks
-from llm.wiki_chain import wiki_chain
-# from vectordb.chroma_db import add_document_to_chroma
+# from llm.meeting_chain import summarize_and_generate_tasks
+from llm.wiki_chain import WikiSummarizer
+from vectordb.chroma_db import add_document_to_chroma
+from llm.meeting_chain import MeetingTaskParser
 from config import CHROMA_HOST, CHROMA_PORT
-import chromadb
+from huggingface_hub import login
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
-from vectordb.chroma_store import embed_and_store
-
+wiki_chain = WikiSummarizer()
+Task_Parser=MeetingTaskParser()
 
 app = FastAPI()
 
@@ -21,14 +25,16 @@ except Exception as e:
     chroma_client = None
     logging.error(f"ChromaDB 연결 실패: {e}")
 
+
+
 class WikiInput(BaseModel):
     project_id: int
     content: str
-    updated_at: str = None
+    updated_at : str
 
 class MeetingInput(BaseModel):
     project_id: int
-    meeting_note: str
+    content: str
     position: str
     nickname: str
     
@@ -43,41 +49,25 @@ def read_root():
     else:
         return {"status": "fail", "message": "ChromaDB not connected"}
 
-# @app.post("/ai/projects/wiki")
-# def summarize_wiki(input: WikiInput):
-#     result = wiki_chain.invoke({"text": input.wiki})
-
-# # 벡터 DB에 저장
-#     add_document_to_chroma(
-#         text=result['content'],
-#         project_id=input.project_id
-#     )
-
-#     return {
-#         "message": "Wiki 업데이트 및 요약 완료"
-#     }
-
-@app.post("/ai/projects/wiki")
+@app.post("/ai/wiki")
 def summarize_wiki(input: WikiInput):
-    summary = wiki_chain.invoke({"text": input.content})
+    result = wiki_chain.summarize_wiki(input)
 
-    # 벡터 DB에 저장
-    result_message = embed_and_store(
-        summary=summary,          
-        metadata={
-            "project_id": input.project_id,  
-            "updated_at": input.updated_at   
-        }
+# 벡터 DB에 저장
+    add_document_to_chroma(
+        text=result['summary'],
+        project_id=input.project_id
     )
 
     return {
-        "message": result_message
-}
+        "message": "Wiki 업데이트 및 요약 완료"
+    }
+
 
 @app.post("/ai/notes")
 def process_meeting(input: MeetingInput):
-    result = summarize_and_generate_tasks(
-        meeting_note=input.meeting_note,
+    result = Task_Parser.summarize_and_generate_tasks(
+        meeting_note=input.content,
         nickname=input.nickname,
         project_id=input.project_id
     )

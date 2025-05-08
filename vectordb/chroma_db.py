@@ -1,16 +1,12 @@
 from langchain_community.vectorstores import Chroma
-from .embedding import KoSimCSEEmbedding
+from .embed_model import CustomEmbeddingFunction  # KoSimCSEEmbedding 대신 CustomEmbeddingFunction 사용
 import os
-
-# import chromadb
-# chroma_client = chromadb.HttpClient(host='localhost', port=8000)
-
 
 # vectorstore 인스턴스를 반환하는 함수
 def get_vectorstore():
-    embedding_fn = KoSimCSEEmbedding()
+    embedding_fn = CustomEmbeddingFunction()  # 여기서 변경
     
-    # Chroma DB 디렉토리 생성
+    # Chroma DB a디렉토리 생성
     persist_directory = "./chroma"
     os.makedirs(persist_directory, exist_ok=True)
     
@@ -24,7 +20,8 @@ def get_vectorstore():
 def add_document_to_chroma(text: str, project_id: int):
     vectorstore = get_vectorstore()
     vectorstore.add_texts(
-        texts=[text],        metadatas=[{"project_id": project_id}]
+        texts=[text],
+        metadatas=[{"project_id": project_id}]
     )
     vectorstore.persist() 
     print(f"저장 완료: {text[:30]}... (project_id={project_id})")

@@ -1,45 +1,54 @@
-from langchain_openai import ChatOpenAI
-from langchain.prompts import PromptTemplate
-from langchain_core.runnables import RunnableSequence
-from dotenv import load_dotenv
 import os
-load_dotenv()
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+from langchain_huggingface import HuggingFacePipeline
+from langchain.prompts import PromptTemplate
+from vectordb.chroma_store import ChromaDBManager
+import torch 
 
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline  # pipeline 추가 필요
-from langchain_community.llms import HuggingFacePipeline
+class WikiSummarizer:
+    def __init__(
+        self,
+        model_name: str = "naver-hyperclovax/HyperCLOVAX-SEED-Text-Instruct-1.5B",
+        embed_func=ChromaDBManager()
+    ):
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.token = os.getenv("HUGGINGFACE_API_KEY")  # ✅ 토큰 직접 불러오기
 
-# HyperCLOVAX 모델 초기화 추가
-model = AutoModelForCausalLM.from_pretrained("naver-hyperclovax/HyperCLOVAX-SEED-Text-Instruct-1.5B")
-tokenizer = AutoTokenizer.from_pretrained("naver-hyperclovax/HyperCLOVAX-SEED-Text-Instruct-1.5B")
+        self.model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            token=self.token  # ✅ 여기 전달
+        )
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            model_name,
+            token=self.token  # ✅ 여기도 전달
+        )
+        self.pipeline = pipeline(
+            "text-generation",
+            model=self.model,
+            tokenizer=self.tokenizer,
+            max_length=1024,
+            temperature=0
+        )
+        self.llm = HuggingFacePipeline(pipeline=self.pipeline)
+        self.prompt = PromptTemplate.from_template("요약해줘: {text}")
+        self.chain = self.prompt | self.llm
+        self.embed_func = embed_func.embed_and_store
 
-# LangChain 파이프라인 생성
-llm = HuggingFacePipeline(
-    pipeline=pipeline(
-        "text-generation",
-        model=model,
-        tokenizer=tokenizer,
-        max_length=1024,
-        temperature=0
-    )
-)
+    def summarize_wiki(self, state: dict) -> dict:
+        state = state.dict()
+        content = state.get("content")
+        if not content:
+            raise KeyError("'content' 키가 없습니다.")
 
-prompt = PromptTemplate.from_template("요약해줘: {text}")
-wiki_chain = prompt | llm
+        summary = self.chain.invoke({"text": content})
 
-# wiki 요약 및 임베딩 저장
-from vectordb.chroma_store import embed_and_store
+        metadata = {"project_id": state["project_id"]}
+        if state.get("updated_at"):
+            metadata["updated_at"] = state["updated_at"]
 
-def summarize_wiki(state: dict):
-    content = state.get("content")
-    if not content:
-        raise KeyError("'content' 키가 없습니다.")
+        self.embed_func(summary, metadata)
 
-    summary = wiki_chain.invoke({"text": content})
-
-    metadata = {"project_id": state["project_id"]}
-    if state.get("updated_at") is not None:
-        metadata["updated_at"] = state["updated_at"]
-    
-    embed_and_store(summary, metadata)
-
-    return {"summary": summary, "message": "wiki_saved", "project_id": state["project_id"], "updated_at": state.get("updated_at", None)}
+        return {
+            "summary": summary,
+            "message": "wiki_saved"
+        }

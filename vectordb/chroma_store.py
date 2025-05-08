@@ -1,42 +1,51 @@
 import chromadb
 from .embed_model import CustomEmbeddingFunction
-
 from config import CHROMA_HOST, CHROMA_PORT
-import chromadb
 
-chroma_client = chromadb.HttpClient(host=CHROMA_HOST, port=CHROMA_PORT)
-
-# chroma_client = chromadb.HttpClient(host='localhost', port=8000)
-
-COLLECTION_NAME = "wiki_summaries"
-collection = chroma_client.get_or_create_collection(name=COLLECTION_NAME)
-
-# ------------------ 임베딩 및 저장 함수 ------------------
-def embed_and_store(summary: str, metadata: dict):
-    doc_id = f"{metadata['project_id']}_{metadata.get('updated_at', 'unknown')}"
+class ChromaDBManager:
+    def __init__(self, collection_name="wiki_summaries", host=CHROMA_HOST, port=CHROMA_PORT):
+        """Initialize ChromaDB connection and collection."""
+        self.client = chromadb.HttpClient(host=host, port=port)
+        self.collection_name = collection_name
+        self.collection = self.client.get_or_create_collection(name=collection_name)
+        self.embedding_function = CustomEmbeddingFunction()
     
-    # # 동일 project_id 기존 문서 삭제
-    # collection.delete(where={"project_id": metadata["project_id"]})
+    def embed_and_store(self, summary: str, metadata: dict):
+        """Embed and store document in ChromaDB, replacing existing documents with same project_id."""
+        doc_id = f"{metadata['project_id']}_{metadata.get('updated_at', 'unknown')}"
+        
+        # Delete existing documents with the same project_id
+        self.collection.delete(where={"project_id": metadata["project_id"]})
 
-    # # 새 문서 추가
-    # embedding = CustomEmbeddingFunction()([summary])[0]   # 단건이므로 첫 번째만
-    # collection.add(ids=[doc_id], documents=[summary], embeddings=[embedding], metadatas=[metadata])
+        # Generate embedding and add new document
+        embedding = self.embedding_function([summary])[0]  # Get first item since it's a single document
+        self.collection.add(
+            ids=[doc_id], 
+            documents=[summary], 
+            embeddings=[embedding], 
+            metadatas=[metadata]
+        )
+        
+        print(f"✅ DB 갱신 완료: {doc_id}, embedding: {embedding[:5]}...")
+        return doc_id
     
-    # print(f"✅ DB 갱신 완료: {doc_id}, embedding: {embedding[:5]}...")
-
-    # 저장 전에 존재 여부 체크
-    search_result = collection.get(where={"project_id": metadata["project_id"]})
-    already_exists = len(search_result['ids']) > 0
-
-    # 기존 project_id 문서 삭제
-    if already_exists:
-        collection.delete(where={"project_id": metadata["project_id"]})
-
-    # 새 문서 추가
-    embedding = CustomEmbeddingFunction()([summary])[0]
-    collection.add(ids=[doc_id], documents=[summary], embeddings=[embedding], metadatas=[metadata])
+    def search(self, query_text, n_results=5, where_filter=None):
+        """Search for similar documents."""
+        query_embedding = self.embedding_function([query_text])[0]
+        results = self.collection.query(
+            query_embeddings=[query_embedding],
+            n_results=n_results,
+            where=where_filter
+        )
+        return results
     
-    print(f"✅ DB 갱신 완료: {doc_id}, embedding: {embedding[:5]}...")
+    def get_by_project_id(self, project_id):
+        """Retrieve documents by project ID."""
+        return self.collection.get(where={"project_id": project_id})
+    
+    def delete_by_project_id(self, project_id):
+        """Delete documents by project ID."""
+        return self.collection.delete(where={"project_id": project_id})
 
-    # 저장 상태 반환
-    return "wiki_update" if already_exists else "wiki_saved"
+# ✅ Create a singleton instance for reuse
+default_db_manager = ChromaDBManager()

@@ -1,7 +1,9 @@
-from vectordb.chroma_store import collection
-from vectordb.embed_model import CustomEmbeddingFunction
 
+from vectordb.embed_model import CustomEmbeddingFunction
+import chromadb
 import logging
+
+from config import CHROMA_HOST, CHROMA_PORT
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -10,7 +12,9 @@ embedding_fn = CustomEmbeddingFunction()
 
 def retrieve_wiki_context(task: str, project_id: int, k: int = 3) -> str:
     query_embedding = embedding_fn.embed_query(task)
-
+    COLLECTION_NAME = "wiki_summaries"
+    chroma_client = chromadb.HttpClient(host=CHROMA_HOST, port=CHROMA_PORT)
+    collection = chroma_client.get_or_create_collection(name=COLLECTION_NAME)
     results = collection.query(
         query_embeddings=[query_embedding],
         n_results=k,
