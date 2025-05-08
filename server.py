@@ -2,12 +2,13 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import logging
 import chromadb
-# from llm.meeting_chain import summarize_and_generate_tasks
-# from llm.wiki_chain import wiki_chain
+from llm.meeting_chain import summarize_and_generate_tasks
+from llm.wiki_chain import wiki_chain
 # from vectordb.chroma_db import add_document_to_chroma
 from config import CHROMA_HOST, CHROMA_PORT
 import chromadb
 
+from vectordb.chroma_store import embed_and_store
 
 
 app = FastAPI()
@@ -20,11 +21,10 @@ except Exception as e:
     chroma_client = None
     logging.error(f"ChromaDB 연결 실패: {e}")
 
-
-
 class WikiInput(BaseModel):
     project_id: int
-    wiki: str
+    content: str
+    updated_at: str = None
 
 class MeetingInput(BaseModel):
     project_id: int
@@ -57,16 +57,32 @@ def read_root():
 #         "message": "Wiki 업데이트 및 요약 완료"
 #     }
 
+@app.post("/ai/projects/wiki")
+def summarize_wiki(input: WikiInput):
+    summary = wiki_chain.invoke({"text": input.content})
 
-# @app.post("/ai/notes")
-# def process_meeting(input: MeetingInput):
-#     result = summarize_and_generate_tasks(
-#         meeting_note=input.meeting_note,
-#         nickname=input.nickname,
-#         project_id=input.project_id
-#     )
+    # 벡터 DB에 저장
+    result_message = embed_and_store(
+        summary=summary,          
+        metadata={
+            "project_id": input.project_id,  
+            "updated_at": input.updated_at   
+        }
+    )
 
-#     return {
-#         "message": "keywords_created",
-#         "detail": result
-#     }
+    return {
+        "message": result_message
+}
+
+@app.post("/ai/notes")
+def process_meeting(input: MeetingInput):
+    result = summarize_and_generate_tasks(
+        meeting_note=input.meeting_note,
+        nickname=input.nickname,
+        project_id=input.project_id
+    )
+
+    return {
+        "message": "keywords_created",
+        "detail": result
+    }
