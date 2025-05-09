@@ -60,6 +60,7 @@ class MeetingTaskParser:
             idx = 2
         return data_cells[idx] if idx < len(data_cells) else ""
 
+    
     def generate_response(self, chat: list) -> str:
         inputs = self.tokenizer.apply_chat_template(
             chat,
@@ -67,6 +68,8 @@ class MeetingTaskParser:
             return_dict=True,
             add_generation_prompt=True
         )
+        
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
         outputs = self.model.generate(
             **inputs,

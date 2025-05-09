@@ -26,7 +26,7 @@ class ChromaDBManager:
             metadatas=[metadata]
         )
         
-        print(f"✅ DB 갱신 완료: {doc_id}, embedding: {embedding[:5]}...")
+        print(f"DB 갱신 완료: {doc_id}, embedding: {embedding[:5]}...")
         return doc_id
     
     def search(self, query_text, n_results=5, where_filter=None):
@@ -47,5 +47,5 @@ class ChromaDBManager:
         """Delete documents by project ID."""
         return self.collection.delete(where={"project_id": project_id})
 
-# ✅ Create a singleton instance for reuse
+
 default_db_manager = ChromaDBManager()

@@ -27,7 +27,7 @@ class WikiSummarizer:
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
             token=self.token  # 여기 전달
-        )
+        ).to(self.device)
         logger.info("Model loaded successfully")
         
         logger.info("Loading tokenizer...")
@@ -52,6 +52,8 @@ class WikiSummarizer:
         self.prompt = PromptTemplate.from_template("요약해줘: {text}")
         self.chain = self.prompt | self.llm
         self.embed_func = embed_func.embed_and_store
+
+        self._warmup()
         logger.info("WikiSummarizer initialization complete")
 
     def summarize_wiki(self, state: dict) -> dict:
