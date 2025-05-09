@@ -4,7 +4,6 @@ import logging
 import chromadb
 import httpx
 from llm.wiki_chain import WikiSummarizer
-from vectordb.chroma_db import add_document_to_chroma
 from llm.meeting_chain import MeetingTaskParser
 from config import CHROMA_HOST, CHROMA_PORT
 from dotenv import load_dotenv
@@ -53,13 +52,7 @@ def read_root():
 
 @app.post("/ai/wiki")
 def summarize_wiki(input: WikiInput):
-    result = wiki_chain.summarize_wiki(input)
-
-# 벡터 DB에 저장
-    add_document_to_chroma(
-        text=result['summary'],
-        project_id=input.project_id
-    )
+    wiki_chain.summarize_wiki(input)
 
     return {
         "message": "Wiki_saved"

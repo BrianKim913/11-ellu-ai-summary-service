@@ -79,6 +79,5 @@ class WikiSummarizer:
         logger.info("Wiki summarization completed successfully")
 
         return {
-            "summary": summary,
             "message": "wiki_saved"
         }
