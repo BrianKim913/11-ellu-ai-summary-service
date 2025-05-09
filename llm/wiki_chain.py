@@ -53,7 +53,6 @@ class WikiSummarizer:
         self.chain = self.prompt | self.llm
         self.embed_func = embed_func.embed_and_store
 
-        self._warmup()
         logger.info("WikiSummarizer initialization complete")
 
     def summarize_wiki(self, state: dict) -> dict:
