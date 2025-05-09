@@ -14,22 +14,31 @@ logger = logging.getLogger(__name__)
 
 class MeetingTaskParser:
     def __init__(self):
+        logger.info("Initializing MeetingTaskParser...")
         load_dotenv()
         token = os.getenv("HUGGINGFACE_API_KEY")
+        if not token:
+            logger.warning("HUGGINGFACE_API_KEY not found in environment variables!")
 
         model_name = "naver-hyperclovax/HyperCLOVAX-SEED-Text-Instruct-1.5B"
+        logger.info(f"Using model: {model_name}")
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        logger.info(f"Using device: {self.device}")
 
+        logger.info("Loading model...")
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
-            token=token  # ✅ 로그인 없이 토큰 전달
+            token=token  # 로그인 없이 토큰 전달
         ).to(self.device) # 44issue
+        logger.info("Model loaded successfully")
 
+        logger.info("Loading tokenizer...")
         self.tokenizer = AutoTokenizer.from_pretrained(
             model_name,
-            token=token  # ✅ 동일하게 토큰 전달
+            token=token  # 동일하게 토큰 전달
         )
+        logger.info("Tokenizer loaded successfully")
 
     def extract_row_for_nickname(self, note: str, nickname: str) -> str:
         lines = note.strip().split("\n")
@@ -73,6 +82,7 @@ class MeetingTaskParser:
         return re.sub(r"```json|```", "", text).strip()
 
     def summarize_and_generate_tasks(self, meeting_note: str, nickname: str, project_id: int):
+        logger.info(f"Processing meeting note for nickname: {nickname}, project_id: {project_id}")
         system_prompt = {
             "role": "system",
             "content": (
@@ -101,12 +111,19 @@ class MeetingTaskParser:
 
         summary = self.generate_response([system_prompt, user_prompt])
         task_candidates = summary.split(',')
+        logger.info(f"Extracted {len(task_candidates)} task candidates")
 
         parsed_results = []
         for task in task_candidates:
+            task = task.strip()
+            if not task:
+                continue
+
+            logger.info(f"Processing task: {task}")
             wiki_context = retrieve_wiki_context(task, project_id)
             # web_context = retrieve_web_context(task)  # 주석 해제 시 외부에서 정의 필요
-
+            logger.info(f"Retrieved wiki for Project ID {project_id}")
+        
             task_chat = [
                 {
                     "role": "system",
@@ -131,6 +148,7 @@ class MeetingTaskParser:
                         "세부 작업 3"
                     ]
                     }}
+                    
                     """
                 }
             ]
@@ -138,15 +156,16 @@ class MeetingTaskParser:
             response = self.generate_response(task_chat)
             try:
                 parsed = json.loads(self.clean_json_codeblock(response))
+                subtasks_count = len(parsed.get("subtasks", []))
+                logger.info(f"Successfully parsed {subtasks_count} subtasks for task: {parsed.get('task')}")
                 parsed_results.append({
                     "keyword": parsed["task"],
                     "subtasks": parsed["subtasks"]
                 })
+                logger.info(f"Completed processing with {len(parsed_results)} tasks generated")
             except Exception as e:
-                logger.error(f"파싱 실패: {e}\n{response}")
-                parsed_results.append({
-                    "keyword": task,
-                    "subtasks": []
-                })
-
+                logger.error(f"Failed to parse response for task '{task}': {e}")
+                logger.error(f"Response was: {response}")
+                continue
+        
         return parsed_results

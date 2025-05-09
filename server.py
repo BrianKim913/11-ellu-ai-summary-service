@@ -9,6 +9,12 @@ from llm.meeting_chain import MeetingTaskParser
 from config import CHROMA_HOST, CHROMA_PORT
 from dotenv import load_dotenv
 load_dotenv()
+import logging
+import os
+
+BE_URL = os.getenv("BE_URL")
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 wiki_chain = WikiSummarizer()
 Task_Parser=MeetingTaskParser()
@@ -28,7 +34,7 @@ class WikiInput(BaseModel):
     content: str
     updated_at : str
 
-class MeetingInput(BaseModel):
+class MeetingNote(BaseModel):
     project_id: int
     content: str
     position: str
@@ -61,24 +67,33 @@ def summarize_wiki(input: WikiInput):
 
 # BE → AI 회의록 전달
 @app.post("/projects/{id}/notes")
-async def receive_meeting_note(id: int, input: MeetingInput):
-    result = Task_Parser.summarize_and_generate_tasks(
-        meeting_note=input.meeting_note,
-        nickname=input.nickname,
-        project_id=id
-    )
+async def receive_meeting_note(id: int, input: MeetingNote):
 
-    # AI → BE 콜백 전달
-    await send_result_to_backend(id, result)
+    try:
+        result = Task_Parser.summarize_and_generate_tasks(
+            project_id=input.project_id,
+            meeting_note=input.content,
+            nickname=input.nickname
+        )
 
-    return {
-        "message": "processing_complete",
-        "detail": "Result sent to backend"
-    }
+        # AI → BE 콜백 전달
+        await send_result_to_backend(id, result)
+
+        return {
+            "message": "processing_complete",
+            "detail": "Result sent to backend"
+        }
+    
+    except Exception as e:
+        logging.error(f"Error processing meeting note: {str(e)}")
+        return {
+            "message": "processing_failed",
+            "detail": str(e)
+        }
 
 # 콜백 함수
 async def send_result_to_backend(project_id: int, result: dict):
-    backend_callback_url = f"http://[BE_URL]/ai-callback/projects/{project_id}/preview"
+    backend_callback_url = f"{BE_URL}/ai-callback/projects/{project_id}/preview"
     async with httpx.AsyncClient() as client:
         try:
             await client.post(
