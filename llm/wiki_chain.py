@@ -58,7 +58,6 @@ class WikiSummarizer:
         logger.info(f"Starting wiki summarization for project_id: {state.dict().get('project_id')}")
         state = state.dict()
         content = state.get("content")
-        logger.info(f"Content length: {content_length} characters")
 
         if not content:
             logger.error("'content' key missing in input state")
