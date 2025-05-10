@@ -171,4 +171,4 @@ class MeetingTaskParser:
                 logger.error(f"Response was: {response}")
                 continue
         
-        return parsed_results
+        return { "message" : "keywords_created", "detail": parsed_results}
