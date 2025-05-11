@@ -66,7 +66,8 @@ async def receive_meeting_note(id: int, input: MeetingNote):
         result = Task_Parser.summarize_and_generate_tasks(
             project_id=input.project_id,
             meeting_note=input.content,
-            nickname=input.nickname
+            nickname=input.nickname,
+            position=input.position
         )
 
         # AI → BE 콜백 전달
