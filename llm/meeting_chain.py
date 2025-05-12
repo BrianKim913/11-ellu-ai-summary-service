@@ -43,7 +43,8 @@ class MeetingTaskParser:
     def extract_row_for_nickname(self, note: str, nickname: str) -> str:
         lines = note.strip().split("\n")
         content_lines = [line for line in lines if "|" in line]
-        filtered_lines = [line for line in content_lines if nickname in line]
+        filtered_lines = [line for line in content_lines if re.search(re.escape(nickname), line, re.IGNORECASE)]
+        
         header_lines = content_lines[:2]
         return "\n".join(header_lines + filtered_lines)
     
