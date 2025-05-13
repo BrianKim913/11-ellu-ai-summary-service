@@ -78,7 +78,7 @@ class WikiSummarizer:
         logger.info(f"Storing summary in vector database with metadata: {metadata}")
         self.embed_func(summary, metadata)
         logger.info("Wiki summarization completed successfully")
-
+        
         return {
             "message": "wiki_saved"
         }
